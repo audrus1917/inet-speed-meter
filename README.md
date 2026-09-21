@@ -13,12 +13,11 @@ Runtime-зависимостей нет.
 
 ## Установка и запуск
 
-Установить проект в виртуальное окружение:
+Создать `.venv` и установить зафиксированные в `uv.lock` зависимости:
 
 ```bash
-python3.11 -m venv .venv
-.venv/bin/python -m pip install --upgrade pip
-.venv/bin/python -m pip install -e ".[dev]"
+uv sync --locked
+source .venv/bin/activate
 ```
 
 Запустить измерение:
@@ -33,8 +32,9 @@ internet-speed-meter https://example.com/large-image.jpg
 .venv/bin/python -m speed_meter https://example.com/large-image.jpg --timeout 60
 ```
 
-`--timeout` задаёт предельное время каждого запроса в секундах. При сетевой ошибке
-серия прекращается, а программа возвращает ненулевой код завершения.
+`--timeout` задаёт предельное время каждого запроса в секундах. Сетевые ошибки не
+прерывают серию: программа группирует их по кодам `HTTP <status>`, `TIMEOUT` и
+`NETWORK`, не выводя текст исключения.
 
 ## Методика расчёта
 
@@ -42,26 +42,27 @@ internet-speed-meter https://example.com/large-image.jpg
 - среднее время — сумма длительностей десяти запросов, делённая на 10;
 - объём определяется по реально прочитанным байтам, а не по `Content-Length`;
 - 1 МБ равен 1 000 000 байт;
-- скорость равна общему объёму, делённому на суммарное время загрузок.
+- скорость равна успешно скачанному объёму, делённому только на время успешных
+  загрузок; время запросов с ошибками в расчёт скорости не входит.
 
 ## Разработка
 
 Запуск тестов:
 
 ```bash
-.venv/bin/python -m unittest discover -s tests -v
+uv run --locked pytest -v
 ```
 
 Статический анализ:
 
 ```bash
-.venv/bin/ruff check src tests
+uv run --locked ruff check src tests
 ```
 
 Сборка пакета:
 
 ```bash
-.venv/bin/python -m build
+uv run --locked python -m build
 ```
 
 ## CI/CD

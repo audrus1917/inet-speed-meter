@@ -43,6 +43,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 130
 
     print(f"Выполнено запросов: {result.request_count}")
+    print(f"Успешных запросов: {result.successful_request_count}")
+    if result.error_counts:
+        print("Ошибки по кодам:")
+        for error_code, count in sorted(result.error_counts.items()):
+            print(f"  {error_code}: {count}")
+    else:
+        print("Ошибок: 0")
     print(f"Среднее время запроса: {result.average_request_seconds:.3f} с")
     print(f"Скачано данных: {result.downloaded_megabytes:.2f} МБ")
     print(f"Средняя скорость: {result.megabytes_per_second:.2f} МБ/с")

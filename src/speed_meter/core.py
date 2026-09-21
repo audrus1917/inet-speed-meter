@@ -1,7 +1,7 @@
 """Основная логика измерения скорости загрузки."""
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from http.client import HTTPException
 from time import perf_counter
 from urllib.error import HTTPError, URLError
@@ -24,6 +24,14 @@ class Measurement:
     request_count: int
     total_bytes: int
     total_seconds: float
+    error_counts: dict[str, int] = field(default_factory=dict)
+    successful_seconds: float | None = None
+
+    @property
+    def successful_request_count(self) -> int:
+        """Вернуть количество успешно завершённых запросов."""
+
+        return self.request_count - sum(self.error_counts.values())
 
     @property
     def average_request_seconds(self) -> float:
@@ -41,7 +49,14 @@ class Measurement:
     def megabytes_per_second(self) -> float:
         """Вернуть среднюю скорость в десятичных мегабайтах в секунду."""
 
-        return self.downloaded_megabytes / self.total_seconds
+        download_seconds = (
+            self.total_seconds
+            if self.successful_seconds is None
+            else self.successful_seconds
+        )
+        if download_seconds <= 0:
+            return 0.0
+        return self.downloaded_megabytes / download_seconds
 
 
 def validate_address(address: str) -> None:
@@ -63,6 +78,18 @@ def download(address: str, timeout: float) -> int:
     return downloaded
 
 
+def classify_error(error: Exception) -> str:
+    """Вернуть стабильный код сетевой ошибки без деталей исключения."""
+
+    if isinstance(error, HTTPError):
+        return f"HTTP {error.code}"
+    if isinstance(error, TimeoutError):
+        return "TIMEOUT"
+    if isinstance(error, URLError) and isinstance(error.reason, TimeoutError):
+        return "TIMEOUT"
+    return "NETWORK"
+
+
 def measure_speed(
     address: str,
     *,
@@ -81,17 +108,23 @@ def measure_speed(
 
     total_bytes = 0
     total_seconds = 0.0
+    successful_seconds = 0.0
+    error_counts: dict[str, int] = {}
 
-    for request_number in range(1, request_count + 1):
+    for _ in range(request_count):
         started_at = clock()
+        request_succeeded = False
         try:
             total_bytes += downloader(address, timeout)
+            request_succeeded = True
         except (HTTPError, URLError, HTTPException, TimeoutError, OSError) as error:
-            raise MeasurementError(
-                f"запрос {request_number} из {request_count} "
-                f"завершился ошибкой: {error}"
-            ) from error
-        total_seconds += clock() - started_at
+            error_code = classify_error(error)
+            error_counts[error_code] = error_counts.get(error_code, 0) + 1
+        finally:
+            request_seconds = clock() - started_at
+            total_seconds += request_seconds
+            if request_succeeded:
+                successful_seconds += request_seconds
 
     if total_seconds <= 0:
         raise MeasurementError("время измерения должно быть больше нуля")
@@ -100,4 +133,6 @@ def measure_speed(
         request_count=request_count,
         total_bytes=total_bytes,
         total_seconds=total_seconds,
+        error_counts=error_counts,
+        successful_seconds=successful_seconds,
     )
