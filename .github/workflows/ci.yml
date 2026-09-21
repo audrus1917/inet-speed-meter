@@ -15,15 +15,16 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up uv
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
-          python-version: "3.13"
-          cache: pip
-      - name: Install Ruff
-        run: python -m pip install ruff
+          enable-cache: true
+      - name: Install Python
+        run: uv python install 3.13
+      - name: Sync dependencies
+        run: uv sync --locked --python 3.13
       - name: Run Ruff
-        run: ruff check src tests
+        run: uv run --locked ruff check src tests
 
   test:
     runs-on: ubuntu-latest
@@ -35,30 +36,32 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up uv
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
-          python-version: ${{ matrix.python-version }}
-          cache: pip
-      - name: Install package
-        run: python -m pip install .
+          enable-cache: true
+      - name: Install Python
+        run: uv python install ${{ matrix.python-version }}
+      - name: Sync dependencies
+        run: uv sync --locked --python ${{ matrix.python-version }}
       - name: Run tests
-        run: python -m unittest discover -s tests -v
+        run: uv run --locked pytest -v
 
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up uv
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
-          python-version: "3.13"
-          cache: pip
-      - name: Install build frontend
-        run: python -m pip install build
+          enable-cache: true
+      - name: Install Python
+        run: uv python install 3.13
+      - name: Sync dependencies
+        run: uv sync --locked --python 3.13
       - name: Build distributions
-        run: python -m build
+        run: uv run --locked python -m build
       - name: Upload distributions
         uses: actions/upload-artifact@v4
         with:

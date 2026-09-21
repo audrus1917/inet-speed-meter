@@ -2,7 +2,7 @@
 
 import unittest
 from unittest.mock import patch
-from urllib.error import URLError
+from urllib.error import HTTPError, URLError
 
 from speed_meter.core import (
     MeasurementError,
@@ -59,25 +59,56 @@ class CoreTests(unittest.TestCase):
             with self.subTest(address=address), self.assertRaises(ValueError):
                 validate_address(address)
 
-    def test_reports_failed_request(self) -> None:
-        """Сетевая ошибка содержит номер неудачного запроса."""
+    def test_counts_request_errors(self) -> None:
+        """Ошибки группируются по коду без остановки серии."""
 
         call_count = 0
 
         def downloader(address: str, timeout: float) -> int:
             nonlocal call_count
             call_count += 1
+            if call_count == 1:
+                raise HTTPError(address, 403, "Forbidden", None, None)
+            if call_count == 2:
+                raise HTTPError(address, 429, "Too Many Requests", None, None)
             if call_count == 3:
+                raise TimeoutError("timed out")
+            if call_count == 4:
                 raise URLError("connection refused")
-            return 100
+            return 1_000_000
 
-        timestamps = iter([0.0, 1.0, 1.0, 2.0, 2.0])
-        with self.assertRaisesRegex(MeasurementError, "запрос 3 из 10"):
-            measure_speed(
-                "https://example.com/file",
-                downloader=downloader,
-                clock=lambda: next(timestamps),
-            )
+        timestamps = iter(float(value) for value in range(10))
+        result = measure_speed(
+            "https://example.com/file",
+            request_count=5,
+            downloader=downloader,
+            clock=lambda: next(timestamps),
+        )
+
+        self.assertEqual(call_count, 5)
+        self.assertEqual(result.successful_request_count, 1)
+        self.assertEqual(
+            result.error_counts,
+            {"HTTP 403": 1, "HTTP 429": 1, "TIMEOUT": 1, "NETWORK": 1},
+        )
+        self.assertEqual(result.successful_seconds, 1)
+        self.assertEqual(result.megabytes_per_second, 1)
+
+    def test_zero_speed_without_success(self) -> None:
+        """При отсутствии успешных запросов скорость равна нулю."""
+
+        def downloader(address: str, timeout: float) -> int:
+            raise TimeoutError("timed out")
+
+        timestamps = iter([0.0, 1.0])
+        result = measure_speed(
+            "https://example.com/file",
+            request_count=1,
+            downloader=downloader,
+            clock=lambda: next(timestamps),
+        )
+
+        self.assertEqual(result.megabytes_per_second, 0)
 
     def test_rejects_zero_duration(self) -> None:
         """Нулевая длительность не приводит к делению на ноль."""

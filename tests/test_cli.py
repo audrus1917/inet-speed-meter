@@ -14,7 +14,13 @@ class CliTests(unittest.TestCase):
     def test_prints_measurement(self, measure_mock) -> None:
         """Успешный запуск печатает все требуемые показатели."""
 
-        measure_mock.return_value = Measurement(10, 20_000_000, 5.0)
+        measure_mock.return_value = Measurement(
+            10,
+            20_000_000,
+            5.0,
+            {"HTTP 429": 2, "TIMEOUT": 1},
+            successful_seconds=4.0,
+        )
         output = io.StringIO()
 
         with redirect_stdout(output):
@@ -22,9 +28,12 @@ class CliTests(unittest.TestCase):
 
         self.assertEqual(exit_code, 0)
         self.assertIn("Выполнено запросов: 10", output.getvalue())
+        self.assertIn("Успешных запросов: 7", output.getvalue())
+        self.assertIn("HTTP 429: 2", output.getvalue())
+        self.assertIn("TIMEOUT: 1", output.getvalue())
         self.assertIn("Среднее время запроса: 0.500 с", output.getvalue())
         self.assertIn("Скачано данных: 20.00 МБ", output.getvalue())
-        self.assertIn("Средняя скорость: 4.00 МБ/с", output.getvalue())
+        self.assertIn("Средняя скорость: 5.00 МБ/с", output.getvalue())
 
     @patch("speed_meter.cli.measure_speed")
     def test_reports_error(self, measure_mock) -> None:
