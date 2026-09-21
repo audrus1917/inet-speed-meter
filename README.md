@@ -69,9 +69,11 @@ uv run --locked python -m build
 ## CI/CD
 
 GitHub Actions запускает тесты на поддерживаемых версиях Python и проверяет сборку
-пакета для каждого push и pull request. При push тега вида `v0.1.0` workflow CD
-повторно проверяет проект, собирает wheel и sdist, затем создаёт GitHub Release с
-этими файлами. Для публикации используются только временные права `GITHUB_TOKEN`.
+пакета для каждого pull request и push в `main`, `master` или `dev`. Собранные
+дистрибутивы сохраняются как workflow artifact. При push тега вида `v0.1.0`
+workflow CD повторно проверяет проект, собирает wheel и sdist, затем создаёт
+GitHub Release с этими файлами. Для публикации используются только временные
+права `GITHUB_TOKEN`.
 
 ## Картинка
 
