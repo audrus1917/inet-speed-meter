@@ -10,6 +10,30 @@ from speed_meter.core import Measurement, MeasurementError
 
 
 class CliTests(unittest.TestCase):
+    def test_rejects_request_count(self) -> None:
+        """Неположительное количество запросов отклоняется."""
+
+        with redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as error:
+            main(["https://example.com/file", "--requests", "0"])
+
+        self.assertEqual(error.exception.code, 2)
+
+    @patch("speed_meter.cli.measure_speed")
+    def test_sets_request_count(self, measure_mock) -> None:
+        """Количество запросов передаётся из командной строки."""
+
+        measure_mock.return_value = Measurement(3, 3_000_000, 3.0)
+
+        with redirect_stdout(io.StringIO()):
+            exit_code = main(["https://example.com/file", "--requests", "3"])
+
+        self.assertEqual(exit_code, 0)
+        measure_mock.assert_called_once_with(
+            "https://example.com/file",
+            request_count=3,
+            timeout=20.0,
+        )
+
     @patch("speed_meter.cli.measure_speed")
     def test_prints_measurement(self, measure_mock) -> None:
         """Успешный запуск печатает все требуемые показатели."""

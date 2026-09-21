@@ -8,9 +8,13 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
-REQUEST_COUNT = 10
+DEFAULT_REQUEST_COUNT = 10
+DEFAULT_TIMEOUT = 20.0
 CHUNK_SIZE = 64 * 1024
 USER_AGENT = "internet-speed-meter/0.1.0"
+
+MEASUREMENT_ERROR_CODE = 1
+KEYBOARD_INTERRUPT_CODE = 130
 
 
 class MeasurementError(RuntimeError):
@@ -93,8 +97,8 @@ def classify_error(error: Exception) -> str:
 def measure_speed(
     address: str,
     *,
-    request_count: int = REQUEST_COUNT,
-    timeout: float = 30.0,
+    request_count: int = DEFAULT_REQUEST_COUNT,
+    timeout: float = DEFAULT_TIMEOUT,
     downloader: Callable[[str, float], int] = download,
     clock: Callable[[], float] = perf_counter,
 ) -> Measurement:

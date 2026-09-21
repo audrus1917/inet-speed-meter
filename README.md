@@ -23,7 +23,7 @@ source .venv/bin/activate
 Запустить измерение:
 
 ```bash
-internet-speed-meter https://example.com/large-image.jpg
+internet-speed-meter https://example.com/large-image.jpg --requests 10
 ```
 
 Либо запустить пакет напрямую из установленного проекта:
@@ -32,14 +32,15 @@ internet-speed-meter https://example.com/large-image.jpg
 .venv/bin/python -m speed_meter https://example.com/large-image.jpg --timeout 60
 ```
 
-`--timeout` задаёт предельное время каждого запроса в секундах. Сетевые ошибки не
+`-n`/`--requests` задаёт количество последовательных попыток (по умолчанию 10),
+а `--timeout` — предельное время каждого запроса в секундах. Сетевые ошибки не
 прерывают серию: программа группирует их по кодам `HTTP <status>`, `TIMEOUT` и
 `NETWORK`, не выводя текст исключения.
 
 ## Методика расчёта
 
 - время запроса включает получение ответа целиком;
-- среднее время — сумма длительностей десяти запросов, делённая на 10;
+- среднее время — сумма длительностей запросов, делённая на число попыток;
 - объём определяется по реально прочитанным байтам, а не по `Content-Length`;
 - 1 МБ равен 1 000 000 байт;
 - скорость равна успешно скачанному объёму, делённому только на время успешных
@@ -71,3 +72,31 @@ GitHub Actions запускает тесты на поддерживаемых �
 пакета для каждого push и pull request. При push тега вида `v0.1.0` workflow CD
 повторно проверяет проект, собирает wheel и sdist, затем создаёт GitHub Release с
 этими файлами. Для публикации используются только временные права `GITHUB_TOKEN`.
+
+## Картинка
+
+Брал в качестве образцов публичные изображения NASA на Wikimedia Commons:
+
+```Markdown
+
+  internet-speed-meter
+  "https://upload.wikimedia.org/wikipedia/commons/d/d6/AS08-16-2593_remastered.jpg"
+
+  Другие варианты:
+
+  - PNG, 14,64 МБ — около 146 МБ за запуск:
+
+  https://upload.wikimedia.org/wikipedia/commons/4/43/The_Earth_seen_from_Apollo_17_with_transparent_background.png
+
+  - JPEG, 18,85 МБ — около 189 МБ за запуск:
+
+  https://upload.wikimedia.org/wikipedia/commons/7/70/The_Blue_Marble%2C_AS17-148-22727.jpg
+
+  Все изображения публично доступны и относятся к материалам NASA в public
+  domain: 5,2 МБ, 14,64 МБ, 18,85 МБ.
+
+  Для регулярных тестов лучше использовать первый файл: он создаёт
+  достаточную нагрузку, но не расходует лишний трафик. Результат будет
+  показывать скорость до CDN Wikimedia, а не гарантированную максимальную
+  скорость интернет-канала.
+```
